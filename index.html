@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GabsAI Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f0f0f;
+      --text: #e8e8e8;
+      --accent: #6c63ff;
+      --card-bg: #1a1a2e;
+      --muted: #888;
+      --green: #4caf50;
+      --red: #ef5350;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2rem;
+      animation: fadeUp 0.6s ease-out;
+    }
+
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .dashboard-header h1 {
+      font-size: 2rem;
+      letter-spacing: -1px;
+    }
+
+    .accent {
+      color: var(--accent);
+    }
+
+    .last-updated {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .price-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .price-card {
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 1.25rem;
+      text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .price-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .price-card .asset-name {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.5rem;
+    }
+
+    .price-card .asset-price {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .price-card .asset-change {
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .price-card .asset-change.positive { color: var(--green); }
+    .price-card .asset-change.negative { color: var(--red); }
+
+    .chart-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .chart-tabs::-webkit-scrollbar { display: none; }
+
+    .chart-tab {
+      padding: 0.5rem 1.25rem;
+      background: var(--card-bg);
+      color: var(--muted);
+      border: 1px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+
+    .chart-tab:hover {
+      color: var(--text);
+    }
+
+    .chart-tab.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .chart-wrapper {
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 1.5rem;
+      position: relative;
+      min-height: 300px;
+    }
+
+    .chart-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--muted);
+    }
+
+    .chart-loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .dashboard-footer {
+      margin-top: 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    @media (max-width: 768px) {
+      .price-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .dashboard-header {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+      }
+
+      .dashboard-header h1 {
+        font-size: 1.6rem;
+      }
+
+      .price-card .asset-price {
+        font-size: 1.1rem;
+      }
+
+      .price-card:last-child {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 1rem;
+      }
+
+      .price-card {
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="dashboard-header">
+      <h1>Gabs<span class="accent">AI</span> Dashboard</h1>
+      <span class="last-updated" id="lastUpdated">Loading...</span>
+    </div>
+
+    <div class="price-grid" id="priceGrid">
+      <div class="price-card" id="card-bitcoin">
+        <div class="asset-name">Bitcoin</div>
+        <div class="asset-price" id="price-bitcoin">&mdash;</div>
+        <div class="asset-change" id="change-bitcoin">&mdash;</div>
+      </div>
+      <div class="price-card" id="card-ethereum">
+        <div class="asset-name">Ethereum</div>
+        <div class="asset-price" id="price-ethereum">&mdash;</div>
+        <div class="asset-change" id="change-ethereum">&mdash;</div>
+      </div>
+      <div class="price-card" id="card-pax-gold">
+        <div class="asset-name">Gold</div>
+        <div class="asset-price" id="price-pax-gold">&mdash;</div>
+        <div class="asset-change" id="change-pax-gold">&mdash;</div>
+      </div>
+      <div class="price-card" id="card-kinesis-silver">
+        <div class="asset-name">Silver</div>
+        <div class="asset-price" id="price-kinesis-silver">&mdash;</div>
+        <div class="asset-change" id="change-kinesis-silver">&mdash;</div>
+      </div>
+      <div class="price-card" id="card-spdr-s-p-500-etf-ondo-tokenized-etf">
+        <div class="asset-name">S&P 500</div>
+        <div class="asset-price" id="price-spdr-s-p-500-etf-ondo-tokenized-etf">&mdash;</div>
+        <div class="asset-change" id="change-spdr-s-p-500-etf-ondo-tokenized-etf">&mdash;</div>
+      </div>
+    </div>
+
+    <div class="chart-tabs" id="chartTabs">
+      <button class="chart-tab active" data-coin="bitcoin">BTC</button>
+      <button class="chart-tab" data-coin="ethereum">ETH</button>
+      <button class="chart-tab" data-coin="pax-gold">Gold</button>
+      <button class="chart-tab" data-coin="kinesis-silver">Silver</button>
+      <button class="chart-tab" data-coin="spdr-s-p-500-etf-ondo-tokenized-etf">S&P 500</button>
+    </div>
+
+    <div class="chart-wrapper">
+      <div class="chart-title" id="chartTitle">Bitcoin — 30 Day</div>
+      <div class="chart-loading" id="chartLoading">Loading chart...</div>
+      <canvas id="assetChart"></canvas>
+    </div>
+
+    <div class="dashboard-footer">
+      Auto-refreshes every 60s &middot; Data via CoinGecko
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script>
+    const ASSETS = {
+      bitcoin:    { name: 'Bitcoin',  decimals: 0, prefix: '$' },
+      ethereum:   { name: 'Ethereum', decimals: 2, prefix: '$' },
+      'pax-gold': { name: 'Gold',     decimals: 2, prefix: '$' },
+      'kinesis-silver': { name: 'Silver', decimals: 2, prefix: '$' },
+      'spdr-s-p-500-etf-ondo-tokenized-etf': { name: 'S&P 500', decimals: 2, prefix: '$' }
+    };
+
+    const COIN_IDS = Object.keys(ASSETS).join(',');
+    let chartInstance = null;
+    let activeTab = 'bitcoin';
+
+    function formatPrice(value, decimals) {
+      if (value == null) return '\u2014';
+      return '$' + value.toLocaleString('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    function formatChange(value) {
+      if (value == null) return '\u2014';
+      const sign = value >= 0 ? '+' : '';
+      return '24h: ' + sign + value.toFixed(2) + '%';
+    }
+
+    async function fetchPrices() {
+      try {
+        const url = `https://api.coingecko.com/api/v3/simple/price?ids=${COIN_IDS}&vs_currencies=usd&include_24hr_change=true`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('API error');
+        const data = await res.json();
+
+        for (const [id, config] of Object.entries(ASSETS)) {
+          const priceEl = document.getElementById('price-' + id);
+          const changeEl = document.getElementById('change-' + id);
+
+          if (data[id]) {
+            const price = data[id].usd;
+            const change = data[id].usd_24h_change;
+
+            priceEl.textContent = formatPrice(price, config.decimals);
+            changeEl.textContent = formatChange(change);
+            changeEl.className = 'asset-change ' + (change >= 0 ? 'positive' : 'negative');
+          } else {
+            priceEl.textContent = '\u2014';
+            changeEl.textContent = '\u2014';
+            changeEl.className = 'asset-change';
+          }
+        }
+
+        document.getElementById('lastUpdated').textContent =
+          'Updated: ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      } catch (e) {
+        console.error('Failed to fetch prices:', e);
+        document.getElementById('lastUpdated').textContent = 'Update failed';
+      }
+    }
+
+    async function fetchChart(coinId) {
+      const loading = document.getElementById('chartLoading');
+      loading.textContent = 'Loading chart...';
+      loading.style.display = 'flex';
+      document.getElementById('chartTitle').textContent = ASSETS[coinId].name + ' — 30 Day';
+
+      try {
+        const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=30`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Chart API error');
+        const data = await res.json();
+
+        const labels = data.prices.map(d =>
+          new Date(d[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        );
+        const prices = data.prices.map(d => d[1]);
+
+        if (chartInstance) {
+          chartInstance.destroy();
+        }
+
+        const config = ASSETS[coinId];
+        const ctx = document.getElementById('assetChart').getContext('2d');
+        chartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              label: config.name + ' / USD',
+              data: prices,
+              borderColor: '#6c63ff',
+              backgroundColor: 'rgba(108, 99, 255, 0.1)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 0,
+              pointHoverRadius: 5,
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: ctx => '$' + ctx.parsed.y.toLocaleString('en-US', {
+                    minimumFractionDigits: config.decimals,
+                    maximumFractionDigits: config.decimals
+                  })
+                }
+              }
+            },
+            scales: {
+              x: {
+                ticks: { color: '#888', maxTicksLimit: 8 },
+                grid: { color: 'rgba(255,255,255,0.05)' }
+              },
+              y: {
+                ticks: {
+                  color: '#888',
+                  callback: v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: config.decimals, maximumFractionDigits: config.decimals })
+                },
+                grid: { color: 'rgba(255,255,255,0.05)' }
+              }
+            }
+          }
+        });
+
+        loading.style.display = 'none';
+      } catch (e) {
+        console.error('Failed to fetch chart:', e);
+        loading.textContent = 'Failed to load chart';
+      }
+    }
+
+    // Tab click handlers
+    document.getElementById('chartTabs').addEventListener('click', (e) => {
+      const tab = e.target.closest('.chart-tab');
+      if (!tab) return;
+
+      document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      activeTab = tab.dataset.coin;
+      fetchChart(activeTab);
+    });
+
+    // Initial load
+    fetchPrices();
+    fetchChart(activeTab);
+
+    // Auto-refresh prices every 60s
+    setInterval(fetchPrices, 60000);
+  </script>
+</body>
+</html>
